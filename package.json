@@ -10,7 +10,7 @@
     "Other"
   ],
   "activationEvents": ["onStartupFinished"],
-  "main": "./out/cloak4.js",
+  "main": "./out/cloak6.js",
   "contributes": {
     
   },
