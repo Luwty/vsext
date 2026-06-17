@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+	<meta charset="UTF-8">
+	<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src {{cspSource}} 'unsafe-inline'; script-src 'nonce-{{nonce}}';">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>定时统计</title>
+	<style>
+		:root {
+			--bg: var(--vscode-editor-background);
+			--fg: var(--vscode-editor-foreground);
+			--muted: var(--vscode-descriptionForeground);
+			--border: var(--vscode-panel-border);
+			--accent: var(--vscode-progressBar-background);
+			--track: var(--vscode-input-background);
+			--card: var(--vscode-sideBar-background);
+		}
+
+		* {
+			box-sizing: border-box;
+		}
+
+		body {
+			margin: 0;
+			padding: 20px;
+			background: var(--bg);
+			color: var(--fg);
+			font-family: var(--vscode-font-family);
+			font-size: var(--vscode-font-size);
+		}
+
+		.panel {
+			max-width: 560px;
+			border: 1px solid var(--border);
+			border-radius: 8px;
+			background: var(--card);
+			overflow: hidden;
+		}
+
+		.header {
+			padding: 16px 18px;
+			border-bottom: 1px solid var(--border);
+		}
+
+		.title {
+			margin: 0;
+			font-size: 18px;
+			font-weight: 600;
+		}
+
+		.state {
+			margin-top: 6px;
+			color: var(--muted);
+		}
+
+		.content {
+			padding: 18px;
+			display: grid;
+			gap: 18px;
+		}
+
+		.metrics {
+			display: grid;
+			grid-template-columns: repeat(3, minmax(0, 1fr));
+			gap: 10px;
+		}
+
+		.metric {
+			padding: 12px;
+			border: 1px solid var(--border);
+			border-radius: 6px;
+			background: var(--bg);
+		}
+
+		.metric-label {
+			color: var(--muted);
+			font-size: 12px;
+		}
+
+		.metric-value {
+			margin-top: 6px;
+			font-size: 18px;
+			font-weight: 600;
+		}
+
+		.progress-layout {
+			display: grid;
+			grid-template-columns: 1fr 132px;
+			gap: 18px;
+			align-items: center;
+		}
+
+		.time {
+			font-size: 34px;
+			font-weight: 700;
+			letter-spacing: 0;
+		}
+
+		.total {
+			margin-top: 4px;
+			color: var(--muted);
+		}
+
+		.bar {
+			margin-top: 16px;
+			height: 10px;
+			border-radius: 999px;
+			background: var(--track);
+			overflow: hidden;
+		}
+
+		.bar-fill {
+			width: 100%;
+			height: 100%;
+			border-radius: inherit;
+			background: var(--accent);
+			transition: width 300ms ease;
+		}
+
+		.ring {
+			--progress-deg: 360deg;
+			width: 116px;
+			height: 116px;
+			border-radius: 50%;
+			display: grid;
+			place-items: center;
+			background: conic-gradient(var(--accent) var(--progress-deg), var(--track) 0);
+		}
+
+		.ring-inner {
+			width: 82px;
+			height: 82px;
+			border-radius: 50%;
+			display: grid;
+			place-items: center;
+			background: var(--card);
+			font-size: 20px;
+			font-weight: 700;
+		}
+
+		@media (max-width: 520px) {
+			.metrics,
+			.progress-layout {
+				grid-template-columns: 1fr;
+			}
+
+			.ring {
+				justify-self: start;
+			}
+		}
+	</style>
+</head>
+<body>
+	<section class="panel" aria-label="定时统计">
+		<header class="header">
+			<h1 class="title">定时统计</h1>
+			<div id="stateText" class="state">等待数据...</div>
+		</header>
+
+		<main class="content">
+			<div class="metrics">
+				<div class="metric">
+					<div class="metric-label">暂停次数</div>
+					<div id="pauseCount" class="metric-value">0</div>
+				</div>
+				<div class="metric">
+					<div class="metric-label">运行次数</div>
+					<div id="runCount" class="metric-value">0</div>
+				</div>
+				<div class="metric">
+					<div class="metric-label">运行时长</div>
+					<div id="runDuration" class="metric-value">0秒</div>
+				</div>
+			</div>
+
+			<div class="progress-layout">
+				<div>
+					<div id="remainingText" class="time">10:00</div>
+					<div id="totalText" class="total">总时长 10:00</div>
+					<div class="bar" aria-label="倒计时横向进度">
+						<div id="barFill" class="bar-fill"></div>
+					</div>
+				</div>
+
+				<div id="ring" class="ring" aria-label="倒计时环形进度">
+					<div id="ringText" class="ring-inner">100%</div>
+				</div>
+			</div>
+		</main>
+	</section>
+
+	<script nonce="{{nonce}}">
+		const stateText = document.getElementById('stateText');
+		const pauseCount = document.getElementById('pauseCount');
+		const runCount = document.getElementById('runCount');
+		const runDuration = document.getElementById('runDuration');
+		const remainingText = document.getElementById('remainingText');
+		const totalText = document.getElementById('totalText');
+		const barFill = document.getElementById('barFill');
+		const ring = document.getElementById('ring');
+		const ringText = document.getElementById('ringText');
+
+		window.addEventListener('message', (event) => {
+			const message = event.data;
+
+			if (!message || message.type !== 'stats:update') {
+				return;
+			}
+
+			const stats = message.payload;
+			const progress = Math.max(0, Math.min(100, Number(stats.progressPercent) || 0));
+
+			stateText.textContent = stats.stateText;
+			pauseCount.textContent = String(stats.pauseCount);
+			runCount.textContent = String(stats.runCount);
+			runDuration.textContent = stats.runDurationText;
+			remainingText.textContent = stats.remainingText;
+			totalText.textContent = `总时长 ${stats.totalText}`;
+			barFill.style.width = `${progress}%`;
+			ring.style.setProperty('--progress-deg', `${progress * 3.6}deg`);
+			ringText.textContent = `${progress}%`;
+		});
+	</script>
+</body>
+</html>

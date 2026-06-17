@@ -10,9 +10,14 @@
     "Other"
   ],
   "activationEvents": ["onStartupFinished"],
-  "main": "./out/cloak6.js",
+  "main": "./out/cloak7.js",
   "contributes": {
-    
+    "commands": [
+      {
+        "command": "vsext.openScoreboard",
+        "title": "Open Timer Scoreboard"
+      }
+    ]
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
