@@ -23,7 +23,7 @@ let statsStore: DailyStatsStore | undefined;
 let currentRunStartedAt: number | undefined;
 
 const readyDelayMs = 3000;
-const countdownSeconds = 10;
+const countdownSeconds = 30 * 60;
 const pauseBlinkMs = 500;
 const activityDebounceMs = 300;
 
